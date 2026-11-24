@@ -1,0 +1,9 @@
+true,predicted,count
+dog,cat,81
+cat,dog,66
+bird,frog,24
+cat,frog,24
+frog,cat,23
+airplane,ship,22
+cat,bird,22
+truck,automobile,22

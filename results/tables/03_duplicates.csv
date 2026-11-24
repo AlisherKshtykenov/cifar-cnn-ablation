@@ -1,0 +1,4 @@
+check,count
+exact duplicates inside train,0
+exact duplicates inside test,0
+test images identical to a train image,0
