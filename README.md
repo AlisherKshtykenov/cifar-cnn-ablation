@@ -94,6 +94,10 @@ The notebook reuses weights from `weights/` when they exist, and otherwise retra
 
 One seed per experiment, 20 epochs per ablation (30 for the final model), and training ran on a laptop in low-power mode, so the timings are pessimistic.
 
+## Related
+
+- [cifar10-image-denoising](https://github.com/AlisherKshtykenov/cifar10-image-denoising): the same CIFAR-10 split and protocol for image restoration (autoencoders, U-Net, DnCNN).
+
 ## License
 
 [MIT](LICENSE)
