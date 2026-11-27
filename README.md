@@ -2,7 +2,7 @@
 
 # CIFAR CNN Ablation
 
-**From a 53% MLP to a 92.6% ResNet-9 on CIFAR-10: 12 models trained from scratch, with one technique changed at a time to measure what it is actually worth.**
+**From a 53% MLP to a 92.6% ResNet-9 on CIFAR-10: 12 models trained from scratch, with a step-by-step ablation of a deep CNN that measures what individual techniques are worth.**
 
 ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)
@@ -18,7 +18,7 @@ English · [Русский](README.ru.md)
 
 ## Why this project
 
-Tutorials usually show one good CNN. Here every step from a plain MLP to a residual network is trained under the **same protocol** (45k train / 5k validation / 10k test, model selection on validation only, test touched once). That way each gain can be attributed to a single change: BatchNorm, Dropout, augmentation, the LR schedule, width, attention or residual connections.
+Tutorials usually show one good CNN. Here every step from a plain MLP to a residual network is trained under the **same protocol** (45k train / 5k validation / 10k test, model selection on validation only, test touched once). In the deep-CNN ablation BatchNorm, Dropout, augmentation, attention and width are changed one at a time; the optimiser step swaps Adam for SGD + OneCycle and also adds weight decay. The final ResNet-9 changes several things at once, so its gain belongs to the whole recipe.
 
 <p align="center"><img src="results/figures/11_all_models.png" width="85%" alt="All CIFAR-10 models, validation vs test accuracy"></p>
 
@@ -28,7 +28,7 @@ Tutorials usually show one good CNN. Here every step from a plain MLP to a resid
 |---|---|---:|---:|
 | `e1_mlp` | plain MLP | 3.68 M | 53.0% |
 | `e2_simple_cnn` | small CNN | 0.17 M | 70.5% |
-| `e4_se_cnn` | + Squeeze-and-Excitation attention | 0.55 M | 72.7% |
+| `e4_se_cnn` | larger small CNN with Squeeze-and-Excitation attention | 0.55 M | 72.7% |
 | `a1_deep_plain` | deep CNN, no regularisation | 0.81 M | 77.6% |
 | `a3_deep_dropout` | + Dropout only | 0.81 M | 81.2% |
 | `a2_deep_bn` | + BatchNorm only | 0.82 M | 83.0% |
@@ -42,8 +42,9 @@ Tutorials usually show one good CNN. Here every step from a plain MLP to a resid
 
 - **BatchNorm + Dropout together: +7.6 pp.** Without them the deep net hits 98% train accuracy while its validation loss doubles. Each one alone fixes only half of the problem.
 - **Augmentation: +1.3 pp**, and overfitting disappears: train accuracy drops below validation.
-- **SGD + OneCycle: +1.3 pp. Width ×2: +2.6 pp. Residual connections: +2.5 pp** on top of the wide net, with fewer parameters.
-- **SE attention** helps the small net (+1.5 pp) and does nothing for the regularised deep one (−0.2 pp, within noise).
+- **SGD + OneCycle (with weight decay): +1.3 pp. Width ×2: +2.6 pp.**
+- **Final ResNet-9 recipe: +2.5 pp** over the wide net, with fewer parameters. It differs in several ways at once (residual architecture, SE, label smoothing, higher max learning rate, 30 epochs instead of 20), so the gain cannot be credited to residual connections alone.
+- **SE attention** does nothing for the regularised deep net (−0.2 pp, within noise). `e4_se_cnn` scores 1.5 pp above `e2_simple_cnn`, but it also differs in padding, head and Dropout and has over 3× the parameters, so that gap does not measure SE.
 
 **CIFAR-100.** The same recipe gives **69.6% top-1 / 91.5% top-5** against 57.6% for the deep baseline CNN. 35% of the errors stay inside the correct superclass (≈4% expected by chance): maple ↔ oak ↔ pine, girl ↔ woman ↔ boy.
 

@@ -355,7 +355,7 @@ _BASELINE_INTERPRETATION_
 md("""
 ## 7. Variations: what each technique adds (ablation)
 
-Base: the deep baseline CNN. **Each experiment changes one thing** relative to its predecessor:
+Base: the deep baseline CNN. Each experiment changes **one technique** relative to its base run; the switch to SGD + OneCycle also adds weight decay 5e-4:
 
 | Experiment | Change |
 |---|---|
@@ -365,7 +365,7 @@ Base: the deep baseline CNN. **Each experiment changes one thing** relative to i
 | `e3_deep_cnn` | BatchNorm + Dropout (baseline) |
 | `a4_deep_aug` | e3 + data augmentation |
 | `a5_deep_aug_se` | a4 + SE (channel attention) block after each conv block |
-| `a6_deep_aug_onecycle` | a4 with SGD-Nesterov + OneCycle learning-rate schedule instead of constant Adam |
+| `a6_deep_aug_onecycle` | a4 with SGD-Nesterov + OneCycle learning-rate schedule instead of constant Adam, plus weight decay 5e-4 |
 | `a7_deep_wide_aug_onecycle` | a6 with 2× wider layers (64-128-256) |
 """)
 code("""
