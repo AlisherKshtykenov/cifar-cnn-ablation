@@ -14,15 +14,13 @@ code = lambda t: CELLS.append(nbf.v4.new_code_cell(t.strip()))
 md("""
 # CIFAR-100: the CIFAR-10 recipe on 100 classes
 
-**Student:** _Name Surname_ · **ID:** _000000_
-
 Same pipeline as the CIFAR-10 notebook, now with **100 classes** (600 images each: 500 train / 100 test).
 This notebook is **self-contained** (no local imports): upload it to Kaggle or Colab, switch on a GPU and *Run all*.
 It picks the device automatically: CUDA (Kaggle T4/P100, Colab) → full-width ResNet-9; Apple MPS / CPU → half width
 so it fits on a laptop. The saved outputs below were produced on: _DEVICE_NOTE_.
 
 Compared models (both with the same augmentation and validation protocol):
-1. `deep_cnn` — the deep CNN from Lecture 10, slide 13 (Adam 1e-3), as a baseline;
+1. `deep_cnn` — a reference deep CNN (Adam 1e-3), as a baseline;
 2. `resnet9` — ResNet-9 + SE attention + OneCycle + label smoothing (best CIFAR-10 recipe).
 """)
 code("""
@@ -103,7 +101,7 @@ def augment(x, pad=4):
     return out.contiguous()
 """)
 
-md("## 3. Models\nLecture deep CNN (slide 13) and ResNet-9 with SE blocks — same definitions as `src/models.py` of the CIFAR-10 lab.")
+md("## 3. Models\nBaseline deep CNN and ResNet-9 with SE blocks — same definitions as `src/models.py` of the CIFAR-10 study.")
 code("""
 class SEBlock(nn.Module):
     def __init__(self, c, ratio=8):
@@ -111,7 +109,7 @@ class SEBlock(nn.Module):
         self.fc = nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(c, c // ratio), nn.ReLU(), nn.Linear(c // ratio, c), nn.Sigmoid())
     def forward(self, x): return x * self.fc(x)[:, :, None, None]
 
-class LectureDeepCNN(nn.Module):
+class BaselineDeepCNN(nn.Module):
     def __init__(self, n=100):
         super().__init__()
         L, c_in = [], 3
@@ -138,7 +136,7 @@ class ResNet9(nn.Module):
                                  Residual(8 * w), nn.AdaptiveMaxPool2d(1), nn.Flatten(), nn.Dropout(0.2), nn.Linear(8 * w, n))
     def forward(self, x): return self.net(x)
 
-for name, m in [("deep_cnn", LectureDeepCNN()), ("resnet9", ResNet9(w=WIDTH))]:
+for name, m in [("deep_cnn", BaselineDeepCNN()), ("resnet9", ResNet9(w=WIDTH))]:
     print(f"{name:9s} params = {sum(p.numel() for p in m.parameters()):,}")
 """)
 
@@ -182,7 +180,7 @@ def train(name, model, opt_kind, epochs=EPOCHS, bs=128, lr=1e-3, smoothing=0.0):
                       "minutes": (time.time() - t_start) / 60}
 
 RES = {}
-RES["deep_cnn"] = train("deep_cnn", LectureDeepCNN(), "adam", lr=1e-3)
+RES["deep_cnn"] = train("deep_cnn", BaselineDeepCNN(), "adam", lr=1e-3)
 RES["resnet9"] = train("resnet9", ResNet9(w=WIDTH), "sgd_onecycle", lr=0.1, smoothing=0.1)
 """)
 code("""

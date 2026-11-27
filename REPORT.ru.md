@@ -4,7 +4,7 @@
 
 ## Датасет
 
-CIFAR-10, как рекомендовано: 60 000 цветных картинок 32×32, 10 классов. Скачан parquet-зеркалом Hugging Face (`uoft-cs/cifar10`), контрольные суммы совпали с опубликованными. Описание: [data/info/cifar.md](data/info/cifar.md).
+CIFAR-10: 60 000 цветных картинок 32×32, 10 классов. Скачан parquet-зеркалом Hugging Face (`uoft-cs/cifar10`), контрольные суммы совпали с опубликованными. Описание: [data/info/cifar.md](data/info/cifar.md).
 
 Разбиение: train 45 000 / validation 5 000 (стратифицированно, по 500 на класс) / test 10 000. В эталонном коде валидацией служит тест, это утечка: модель выбирается по тесту. Здесь лучшая эпоха и лучшая модель выбираются по validation, тест считается один раз в конце.
 
@@ -49,7 +49,7 @@ CIFAR-10, как рекомендовано: 60 000 цветных картин�
 | a7_deep_wide_aug_onecycle | a6 с удвоенной шириной | 2.20 M | 90.5% | 90.6% | 0.28 |
 | **f1_resnet9** | **своя: ResNet-9 + SE + аугментация + OneCycle + label smoothing** | 1.66 M | **93.0%** | **92.6%** | 0.31 |
 
-Таблица: `results/tables/07_all_models.csv`, графики обучения: `07_lecture_curves.png`, `08_ablation_regularisation.png`, `09_ablation_aug_schedule.png`, `10_final_curves.png`, `11_all_models.png`.
+Таблица: `results/tables/07_all_models.csv`, графики обучения: `07_baseline_curves.png`, `08_ablation_regularisation.png`, `09_ablation_aug_schedule.png`, `10_final_curves.png`, `11_all_models.png`.
 
 Что дала каждая техника (по validation, погрешность ≈0.5 п.п.):
 - **BatchNorm + Dropout вместе: +7.6 п.п.** к голой глубокой сети. Голая сеть переобучается: train 98%, val loss растёт с 0.68 до 1.51. BN ускоряет обучение, но переобучение остаётся; Dropout убирает переобучение, но учит медленно. Вместе они дополняют друг друга.

@@ -2,7 +2,7 @@
 
 Запуск всех (долго, в фоне):  python3 -m src.experiments
 """
-LECTURE = [  # 1. эталонные архитектуры как есть: Adam lr=1e-3, batch 128, без аугментации
+BASELINES = [  # 1. эталонные архитектуры как есть: Adam lr=1e-3, batch 128, без аугментации
     {"name": "e1_mlp", "arch": "mlp", "optimizer": "adam", "epochs": 20},
     {"name": "e2_simple_cnn", "arch": "simple_cnn", "optimizer": "adam", "epochs": 20},
     {"name": "e3_deep_cnn", "arch": "deep_cnn", "optimizer": "adam", "epochs": 20},
@@ -31,7 +31,7 @@ FINAL = [  # 3. своя модель: ResNet-9 + SE + аугментация + 
      "epochs": 30, "augment": True, "label_smoothing": 0.1, "model_kwargs": {"width": 32}},
 ]
 
-ALL = LECTURE + ABLATION + FINAL
+ALL = BASELINES + ABLATION + FINAL
 BY_NAME = {c["name"]: c for c in ALL}
 
 if __name__ == "__main__":
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     from .train import prepare_data, run_experiment
 
-    names = sys.argv[1:] or [c["name"] for c in LECTURE + ABLATION[:-1] + FINAL + ABLATION[-1:]]
+    names = sys.argv[1:] or [c["name"] for c in BASELINES + ABLATION[:-1] + FINAL + ABLATION[-1:]]
     data = prepare_data("cifar10")
     for name in names:
         _, _, s = run_experiment(BY_NAME[name], data)

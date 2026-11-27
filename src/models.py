@@ -1,4 +1,4 @@
-"""Модели: точные копии эталонных архитектур 10 (Keras -> PyTorch) и улучшенные варианты.
+"""Модели: точные копии эталонных архитектур (Keras -> PyTorch) и улучшенные варианты.
 
 Отличие от Keras: последний слой отдаёт logits без softmax, потому что
 nn.CrossEntropyLoss сам делает log_softmax (так численно устойчивее).
@@ -9,7 +9,7 @@ from torch import nn
 
 
 # ---------- 1. MLP: картинка -> вектор 3072 чисел ----------
-class LectureMLP(nn.Module):
+class BaselineMLP(nn.Module):
     def __init__(self, num_classes=10):
         super().__init__()
         self.net = nn.Sequential(
@@ -24,7 +24,7 @@ class LectureMLP(nn.Module):
 
 
 # ---------- 2. Простая CNN ----------
-class LectureSimpleCNN(nn.Module):
+class BaselineSimpleCNN(nn.Module):
     """Conv(32,3x3,valid) -> MaxPool -> Conv(64,3x3,valid) -> MaxPool -> Dense(64) -> Dense(10)."""
 
     def __init__(self, num_classes=10):
@@ -73,7 +73,7 @@ class SEBlock(nn.Module):
         return x * w                                          # excitation: перевзвешиваем каналы
 
 
-class LectureDeepCNN(nn.Module):
+class BaselineDeepCNN(nn.Module):
     """Блоки 32-64-128 по две свёртки, MaxPool, Dropout 0.25/0.3/0.4, затем Dense(256)+BN+Dropout(0.5).
 
     Флаги use_bn / use_dropout / use_se / width нужны для ablation (по одному изменению за раз).
@@ -107,7 +107,7 @@ class LectureDeepCNN(nn.Module):
 
 
 # ---------- 4. CNN с attention ----------
-class LectureSECNN(nn.Module):
+class BaselineSECNN(nn.Module):
     """Conv32 -> MaxPool -> SE -> Conv64 -> MaxPool -> SE -> Dense128 -> Dropout0.4 -> Dense10."""
 
     def __init__(self, num_classes=10):
@@ -169,10 +169,10 @@ class ResNet9(nn.Module):
 
 
 MODELS = {
-    "mlp": LectureMLP,
-    "simple_cnn": LectureSimpleCNN,
-    "deep_cnn": LectureDeepCNN,
-    "se_cnn": LectureSECNN,
+    "mlp": BaselineMLP,
+    "simple_cnn": BaselineSimpleCNN,
+    "deep_cnn": BaselineDeepCNN,
+    "se_cnn": BaselineSECNN,
     "resnet9": ResNet9,
 }
 

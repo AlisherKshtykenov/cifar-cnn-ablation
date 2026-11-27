@@ -20,25 +20,23 @@ def code(text):
 md("""
 # CIFAR-10: from an MLP to ResNet-9
 
-**Student:** _Name Surname_ · **ID:** _000000_
-
-**Goal.** Apply the CNN architectures from Lecture 10 to CIFAR-10, analyse the dataset, try preprocessing
+**Goal.** Apply reference CNN architectures to CIFAR-10, analyse the dataset, try preprocessing
 (normalisation, augmentation) and several architecture / training variations, and reach the best possible
 accuracy on the held-out test set.
 
 **Task type:** multi-class image classification, 10 balanced classes.
 **Main metric:** accuracy (classes are perfectly balanced, so accuracy is not misleading here) + cross-entropy loss.
-**Done means:** every lecture model reproduced, an ablation showing what each technique adds, a final model clearly
-above the lecture models, error analysis and a conclusion.
+**Done means:** every baseline model reproduced, an ablation showing what each technique adds, a final model clearly
+above the baselines, error analysis and a conclusion.
 
-**Validation protocol.** The lecture code passes `validation_data=(x_test, y_test)`: the test set is then used
+**Validation protocol.** The reference Keras code passes `validation_data=(x_test, y_test)`: the test set is then used
 to pick the model, which is a mild form of data leakage. Here 5 000 training images (stratified) are set aside
 as a **validation set**. All choices (best epoch, best model) are made on validation; the test set is evaluated
 once per model at the very end.
 
-**Framework.** The lecture uses Keras; this notebook uses PyTorch (TensorFlow has no build for Python 3.14).
+**Framework.** The reference implementation uses Keras; this notebook uses PyTorch (TensorFlow has no build for Python 3.14).
 The architectures are reproduced layer by layer. Training runs on the Apple M4 GPU (MPS).
-CIFAR-100 (bonus) is in a separate self-contained notebook `cifar100_resnet9.ipynb` that can be uploaded to Kaggle/Colab.
+CIFAR-100 is in a separate self-contained notebook `cifar100_resnet9.ipynb` that can be uploaded to Kaggle/Colab.
 """)
 
 # ------------------------------------------------------------------ 1. setup
@@ -59,7 +57,7 @@ sys.path.insert(0, str(ROOT))
 from src.data import CIFAR10_CLASSES as CLASSES, load_cifar, split_train_val, channel_stats
 from src.models import build_model, count_params
 from src.train import prepare_data, run_experiment, augment, predict_logits, get_device
-from src.experiments import LECTURE, ABLATION, FINAL, BY_NAME
+from src.experiments import BASELINES, ABLATION, FINAL, BY_NAME
 from src import scratch_conv as sc
 
 FIG, TAB = ROOT / "results" / "figures", ROOT / "results" / "tables"
@@ -105,7 +103,7 @@ plt.suptitle("8 random training images per class", y=0.995)
 plt.tight_layout(); plt.savefig(FIG / "01_preview_grid.png", bbox_inches="tight"); plt.show()
 """)
 md("""
-The images are indeed tiny (Karpathy measured ~94% human accuracy on them, see lecture slide 3).
+The images are indeed tiny (Karpathy measured ~94% human accuracy on them).
 Objects appear in different poses, scales and backgrounds: a model must be invariant to position and
 partly to scale. Birds/airplanes share sky backgrounds; ships/airplanes share blue; cats/dogs share fur texture.
 """)
@@ -211,7 +209,7 @@ md("""
 ## 4. Preprocessing
 
 1. **Split** train → 45 000 train + 5 000 validation, stratified by class.
-2. **Scaling and standardisation**: `x/255`, then `(x − mean)/std` per channel. The lecture only divides by 255;
+2. **Scaling and standardisation**: `x/255`, then `(x − mean)/std` per channel. The reference code only divides by 255;
    standardising centres inputs around 0, which keeps early-layer activations well-scaled and speeds up training.
    Mean/std are fitted on the 45 000 training images only (no leakage).
 3. **Augmentation** (train only, generated on the fly on the GPU): random crop 32×32 from the image padded by
@@ -257,15 +255,15 @@ md("""
 
 `src/scratch_conv.py` implements 1D convolution (valid / same / full), the CNN 2D convolution layer,
 max pooling and the output-size formula $\\;O = \\lfloor (W - K + 2P)/S \\rfloor + 1$ in plain NumPy.
-First, the 1D example from the slides *Convolution explained*: input `[1,2,3,4,5]`, kernel `[2,0,1]`.
+First, a 1D reference example: input `[1,2,3,4,5]`, kernel `[2,0,1]`.
 """)
 code("""
 for mode, expected in [("valid", [7, 10, 13]), ("same", [4, 7, 10, 13, 4]), ("full", [2, 4, 7, 10, 13, 4, 5])]:
     out = sc.conv1d([1, 2, 3, 4, 5], [2, 0, 1], mode)
-    print(f"{mode:5s} -> {out.astype(int).tolist()}  slide: {expected}  match: {out.astype(int).tolist() == expected}")
+    print(f"{mode:5s} -> {out.astype(int).tolist()}  expected: {expected}  match: {out.astype(int).tolist() == expected}")
 print("np.convolve full:", np.convolve([1, 2, 3, 4, 5], [2, 0, 1]).tolist())
 """)
-md("All three modes reproduce the slides and NumPy. Now the 2D CNN layer against `torch.nn.functional.conv2d` (note: CNN layers compute *cross-correlation*, the kernel is not flipped — the flip does not matter because the kernel is learned).")
+md("All three modes reproduce the reference values and NumPy. Now the 2D CNN layer against `torch.nn.functional.conv2d` (note: CNN layers compute *cross-correlation*, the kernel is not flipped — the flip does not matter because the kernel is learned).")
 code("""
 xr = np.random.default_rng(1).normal(size=(3, 7, 7)); wr = np.random.default_rng(2).normal(size=(4, 3, 3, 3)); br = np.ones(4)
 rows = []
@@ -296,25 +294,25 @@ plt.tight_layout(); plt.savefig(FIG / "06_handmade_filters.png"); plt.show()
 """)
 md("Hand-made 3×3 kernels already extract edges, smooth or sharpen; max pooling halves the resolution while keeping the strongest responses. A CNN **learns** such kernels (and many more) by gradient descent instead of having them designed — this is the 'feature extraction' part of the network.")
 
-# ------------------------------------------------------------------ 6. lecture models
+# ------------------------------------------------------------------ 6. baseline models
 md("""
-## 6. Lecture models
+## 6. Baseline models
 
-Four architectures from Lecture 10, trained identically: Adam (lr = 1e-3), batch 128, cross-entropy,
-**20 epochs** (instead of 5 on the slides, to see the full learning curves; 20 is a compute compromise — the Mac ran in Low Power Mode), no augmentation.
+Four reference architectures, trained identically: Adam (lr = 1e-3), batch 128, cross-entropy,
+**20 epochs** (instead of 5 in the reference setup, to see the full learning curves; 20 is a compute compromise — the Mac ran in Low Power Mode), no augmentation.
 The weights from the epoch with the best validation accuracy are kept.
 
-| Model | Slide | Structure |
-|---|---|---|
-| `e1_mlp` | 6 | flatten 3072 → Dense 1024 → Dense 512 → 10 |
-| `e2_simple_cnn` | 10 | Conv32 (valid) → MaxPool → Conv64 → MaxPool → Dense 64 → 10 |
-| `e3_deep_cnn` | 13 | 3 blocks × [Conv, BN, Conv, BN, MaxPool, Dropout] (32-64-128) → Dense 256 + BN + Dropout 0.5 → 10 |
-| `e4_se_cnn` | 17 | Conv32 → MaxPool → **SE** → Conv64 → MaxPool → **SE** → Dense 128 → Dropout → 10 |
+| Model | Structure |
+|---|---|
+| `e1_mlp` | flatten 3072 → Dense 1024 → Dense 512 → 10 |
+| `e2_simple_cnn` | Conv32 (valid) → MaxPool → Conv64 → MaxPool → Dense 64 → 10 |
+| `e3_deep_cnn` | 3 blocks × [Conv, BN, Conv, BN, MaxPool, Dropout] (32-64-128) → Dense 256 + BN + Dropout 0.5 → 10 |
+| `e4_se_cnn` | Conv32 → MaxPool → **SE** → Conv64 → MaxPool → **SE** → Dense 128 → Dropout → 10 |
 
 Training is cached: `run_experiment` loads weights from `weights/` and history from `results/logs/` if they exist.
 """)
 code("""
-for cfg in LECTURE + ABLATION + FINAL:
+for cfg in BASELINES + ABLATION + FINAL:
     m = build_model(cfg["arch"], 10, **cfg.get("model_kwargs", {}))
     print(f"{cfg['name']:28s} params = {count_params(m):>10,}")
 """)
@@ -343,28 +341,28 @@ def plot_curves(names, title, fname):
     axes[1].set_ylim(0, None); axes[0].set_xlabel("epoch"); axes[1].set_xlabel("epoch"); axes[0].legend(fontsize=8)
     fig.suptitle(title); plt.tight_layout(); plt.savefig(FIG / fname); plt.show()
 
-run(LECTURE)
-lecture_tab = summary_table([c["name"] for c in LECTURE])
-lecture_tab.to_csv(TAB / "05_lecture_models.csv"); display(lecture_tab.round(4))
-plot_curves([c["name"] for c in LECTURE], "Lecture models (Adam 1e-3, no augmentation, 20 epochs)", "07_lecture_curves.png")
+run(BASELINES)
+baseline_tab = summary_table([c["name"] for c in BASELINES])
+baseline_tab.to_csv(TAB / "05_baseline_models.csv"); display(baseline_tab.round(4))
+plot_curves([c["name"] for c in BASELINES], "Baseline models (Adam 1e-3, no augmentation, 20 epochs)", "07_baseline_curves.png")
 """)
 md("""
 **Interpretation.**
-_LECTURE_INTERPRETATION_
+_BASELINE_INTERPRETATION_
 """)
 
 # ------------------------------------------------------------------ 7. ablation
 md("""
 ## 7. Variations: what each technique adds (ablation)
 
-Base: the deep CNN from slide 13. **Each experiment changes one thing** relative to its predecessor:
+Base: the deep baseline CNN. **Each experiment changes one thing** relative to its predecessor:
 
 | Experiment | Change |
 |---|---|
 | `a1_deep_plain` | deep CNN without BatchNorm and without Dropout |
 | `a2_deep_bn` | + BatchNorm only |
 | `a3_deep_dropout` | + Dropout only (no BN) |
-| `e3_deep_cnn` | BatchNorm + Dropout (lecture version) |
+| `e3_deep_cnn` | BatchNorm + Dropout (baseline) |
 | `a4_deep_aug` | e3 + data augmentation |
 | `a5_deep_aug_se` | a4 + SE (channel attention) block after each conv block |
 | `a6_deep_aug_onecycle` | a4 with SGD-Nesterov + OneCycle learning-rate schedule instead of constant Adam |
@@ -389,19 +387,19 @@ _ABLATION_INTERPRETATION_
 md("""
 ## 8. Final model: ResNet-9 with SE attention
 
-Combining what helped, plus residual connections (the "stack more layers" idea of slide 12 done safely):
+Combining what helped, plus residual connections (the "stack more layers" idea done safely):
 
 - `conv(64) → conv(128)+pool → Residual(128) → conv(256)+pool → conv(512)+pool → Residual(512) → global max-pool → Dropout → Dense(10)`,
   here at half width (32 … 256 channels, 1.7 M parameters) so that it trains in reasonable time on the M4 GPU;
 - each residual block computes $y = x + \\text{SE}(F(x))$: the skip connection lets the gradient flow directly,
-  SE re-weights channels (slide 17);
+  SE re-weights channels;
 - Conv → BatchNorm → ReLU order (normalise before the non-linearity);
 - augmentation (crop + flip), SGD-Nesterov + OneCycle (max lr 0.1, weight decay 5e-4), label smoothing 0.1, 30 epochs.
 """)
 code("""
 run(FINAL)
 final_tab = summary_table(["f1_resnet9"]); display(final_tab.round(4))
-plot_curves(["e3_deep_cnn", "a6_deep_aug_onecycle", "f1_resnet9"], "Lecture deep CNN vs best ablation vs final ResNet-9", "10_final_curves.png")
+plot_curves(["e3_deep_cnn", "a6_deep_aug_onecycle", "f1_resnet9"], "Baseline deep CNN vs best ablation vs final ResNet-9", "10_final_curves.png")
 """)
 md("""
 **Interpretation.**
@@ -411,7 +409,7 @@ _FINAL_INTERPRETATION_
 # ------------------------------------------------------------------ 9. comparison
 md("## 9. Comparison of all models")
 code("""
-all_names = [c["name"] for c in LECTURE + ABLATION + FINAL]
+all_names = [c["name"] for c in BASELINES + ABLATION + FINAL]
 comp = summary_table(all_names).sort_values("best_val_acc")
 comp.to_csv(TAB / "07_all_models.csv"); display(comp.round(4))
 fig, ax = plt.subplots(figsize=(10, 5))
@@ -486,7 +484,7 @@ md("""
 ## 11. What the network learned
 
 1. First-layer filters (3×3×3 kernels shown as RGB patches).
-2. Feature maps of one image after each block of the lecture deep CNN — from edges to abstract patterns.
+2. Feature maps of one image after each block of the baseline deep CNN — from edges to abstract patterns.
 3. 2-D t-SNE of the penultimate-layer features of the best model: are classes separated?
 """)
 code("""
